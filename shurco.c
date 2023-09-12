@@ -43,6 +43,35 @@ typedef enum {
 	MODE_BASE64_RAW,
 } encode_mode_t;
 
+#ifdef __has_attribute
+# define HAS_ATTRIBUTE(x) __has_attribute(x)
+#else
+# define HAS_ATTRIBUTE(x) 0
+#endif
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201711L) && defined(__has_c_attribute)
+#  define HAS_C_ATTRIBUTE(x) __has_c_attribute(x)
+#else
+#  define HAS_C_ATTRIBUTE(x) 0
+#endif
+#if defined(__cplusplus) && defined(__has_cpp_attribute)
+#  define HAS_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
+#else
+#  define HAS_CPP_ATTRIBUTE(x) 0
+#endif
+
+/*
+ * Define FALLTHROUGH macro for annotating switch case with the 'fallthrough' attribute introduced in CPP17 and C23.
+ * CPP17 : https://en.cppreference.com/w/cpp/language/attributes/fallthrough
+ * C23   : https://en.cppreference.com/w/c/language/attributes/fallthrough
+ */
+#if HAS_C_ATTRIBUTE(fallthrough) || HAS_CPP_ATTRIBUTE(fallthrough)
+# define FALLTHROUGH [[fallthrough]]
+#elif HAS_ATTRIBUTE(__fallthrough__)
+# define FALLTHROUGH __attribute__ ((__fallthrough__))
+#else
+# define FALLTHROUGH /* fallthrough */
+#endif
+
 #ifndef __cplusplus
    /* C version */
 #  define ARRAY_LEN_UNSAFE(X) (sizeof(X)/sizeof(*(X)))
@@ -629,7 +658,7 @@ last_resort:
 					case MODE_BASE64_RAW:
 						FLUSH_B64(true);
 						APPEND_RAW(encode_single_char(b64_raw)); /* encode single again for pending raw */
-						/* passthrough */
+						FALLTHROUGH; /* fallthrough */
 					case MODE_RAW:
 						APPEND_RAW(single_raw);
 						mode = MODE_RAW;
@@ -766,7 +795,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 			word |= t1 << (32 - 1 - 4);
 			word |= t2 << (32 - 1 - 4 * 2);
 			inLeft -= 2;
-			/* passthrough */
+			FALLTHROUGH; /* fallthrough */
 		case '!':
 			if ('!' == c) {
 				if (inLeft < 1) {
@@ -816,7 +845,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 
 		case ')':
 			maybe_b64_1_2bits = 1;
-			/* passthrough */
+			FALLTHROUGH; /* fallthrough */
 		case '(':
 			if (0 == inLeft) {
 				return SHURCO_error(invalid_input);
@@ -832,7 +861,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 		case '+':
 			maybe_b64_1_2bits = 1;
 			maybe_pct_lvl <<= 1;
-			/* passthrough */
+			FALLTHROUGH; /* fallthrough */
 		case '*':
 			maybe_b64_1_2bits += 2;
 			maybe_pct_lvl <<= 1;
@@ -840,9 +869,9 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 				return SHURCO_error(invalid_input);
 			}
 			switch ((next = *in++)) {
-			case '?': maybe_pct_cnt = -1; /* passthrough */
-			case ';': maybe_pct_cnt >>= 1; /* passthrough */
-			case ':': maybe_pct_cnt >>= 1; /* passthrough */
+			case '?': maybe_pct_cnt = -1; FALLTHROUGH; /* fallthrough */
+			case ';': maybe_pct_cnt >>= 1; FALLTHROUGH; /* fallthrough */
+			case ':': maybe_pct_cnt >>= 1; FALLTHROUGH; /* fallthrough */
 			case '@':
 				if (pct_lvl != 0 && pct_cnt < 0 && maybe_pct_cnt < 0) {
 					pct_lvl = 0;
@@ -865,7 +894,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 
 		case '$':
 			maybe_b64_chunk >>= 1; /* base64 l=3 */
-			/* passthrough */
+			FALLTHROUGH; /* fallthrough */
 		case '\'':
 			maybe_b64_chunk >>= 1; /* base64 l=6 */
 			if (inLeft < 4 * maybe_b64_chunk) {
@@ -901,9 +930,9 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 			} while (b64_bytes_cnt == 9);
 			break;
 
-		case '?': maybe_pct_cnt = -1; /* passthrough */
-		case ';': maybe_pct_cnt >>= 1; /* passthrough */
-		case ':': maybe_pct_cnt >>= 1; /* passthrough */
+		case '?': maybe_pct_cnt = -1; FALLTHROUGH; /* fallthrough */
+		case ';': maybe_pct_cnt >>= 1; FALLTHROUGH; /* fallthrough */
+		case ':': maybe_pct_cnt >>= 1; FALLTHROUGH; /* fallthrough */
 		case '@':
 			  if (pct_lvl != 0 && pct_cnt < 0 && maybe_pct_cnt < 0) {
 				  pct_lvl = 0;
