@@ -184,7 +184,7 @@ write_one_byte(const uint8_t c, const uint8_t lvl, uint8_t *SHURCO_RESTRICT cons
 		}
 		*p = c;
 		return 1;
-	} else if (buffsize < lvl + 2) {
+	} else if (buffsize < (size_t)lvl + 2) {
 		return SHURCO_error(dstSize_tooSmall);
 	} else {
 		memcpy(p, PCT, lvl);
@@ -275,7 +275,7 @@ encode_b64_bytes(const uint8_t *SHURCO_RESTRICT in, const uint8_t len, uint8_t *
 	}
 
 	if (len > 2) {
-		for (; i < len - 2; i += 3) {
+		for (; i < (size_t)len - 2; i += 3) {
 			const uint8_t t1 = in[i];
 			const uint8_t t2 = in[i+1];
 			const uint8_t t3 = in[i+2];
@@ -559,7 +559,7 @@ SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, voi
 		for (i = 1; i <= MAX_SUCCESSOR_N && forwardLeft > 0; ++i) {
 			const char_with_lvl_t f_lvl_c = read_one_byte(in + pct_lvl + forwardRead, forwardLeft); /* read forward */
 			const int8_t current_index = chr_ids_by_chr[f_lvl_c.c];
-			uint8_t successor_index;
+			int8_t successor_index;
 			if (current_index < 0) {
 				break;
 			}
