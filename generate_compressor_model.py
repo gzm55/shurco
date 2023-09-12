@@ -30,7 +30,7 @@ static const char chrs_by_chr_id[{chrs_count}] = {{
   {chrs}
 }};
 
-static const int8_t chr_ids_by_chr[256] = {{
+static const int16_t chr_ids_by_chr[256] = {{
   {chrs_reversed}
 }};
 
@@ -38,7 +38,7 @@ static const int8_t successor_ids_by_chr_id_and_chr_id[{chrs_count}][{chrs_count
   {{{successors_reversed}}}
 }};
 
-static const int8_t chrs_by_chr_and_successor_id[MAX_CHR - MIN_CHR][{successors_count}] = {{
+static const uint8_t chrs_by_chr_and_successor_id[MAX_CHR - MIN_CHR][{successors_count}] = {{
   {{{chrs_by_chr_and_successor_id}}}
 }};
 

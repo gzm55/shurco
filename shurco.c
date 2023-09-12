@@ -508,7 +508,7 @@ SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, voi
 		const char_with_lvl_t lvl_c = read_one_byte(in, inLeft); /* de-percent */
 		const uint8_t pct_lvl = lvl_c.lvl;
 		const uint8_t c = lvl_c.c;
-		int8_t last_char_index = chr_ids_by_chr[c];
+		int16_t last_char_index = chr_ids_by_chr[c];
 		int8_t pack = -1;
 
 		/* process pct */
@@ -555,10 +555,10 @@ SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, voi
 		uint8_t forwardPctCnt = last_pct_cnt;
 		uint8_t forwardSwitchPos = 0;
 		forwardReadAcc[0] = 0;
-		indices[0] = last_char_index;
+		indices[0] = (uint8_t)last_char_index;
 		for (i = 1; i <= MAX_SUCCESSOR_N && forwardLeft > 0; ++i) {
 			const char_with_lvl_t f_lvl_c = read_one_byte(in + pct_lvl + forwardRead, forwardLeft); /* read forward */
-			const int8_t current_index = chr_ids_by_chr[f_lvl_c.c];
+			const int16_t current_index = chr_ids_by_chr[f_lvl_c.c];
 			int8_t successor_index;
 			if (current_index < 0) {
 				break;
