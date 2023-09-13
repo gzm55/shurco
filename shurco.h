@@ -14,6 +14,7 @@
 /* === Common basic types === */
 #include <stddef.h> /* size_t */
 #include <stdbool.h> /* bool */
+#include <stdint.h> /* uint64_t */
 
 #define SHURCO_VER_STRING "0.0.1-dev"
 
@@ -64,6 +65,23 @@ SHURCO_ErrorCode SHURCO_getErrorCode(const size_t code)
  * */
 size_t SHURCO_compress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity);
 size_t SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity);
+
+size_t SHURCO_crypt_url(const void *SHURCO_RESTRICT src, void *SHURCO_RESTRICT dst, size_t size, uint64_t seed);
+size_t SHURCO_uncrypt_url(const void *SHURCO_RESTRICT src, void *SHURCO_RESTRICT dst, size_t size, uint64_t seed);
+
+static inline
+size_t SHURCO_compress_seed(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity, uint64_t seed)
+{
+	const size_t r = SHURCO_compress(src, srcSize, dst, dstCapacity);
+	if (SHURCO_isError(r)) {
+		return r;
+	} else {
+		const size_t e = SHURCO_crypt_url(NULL, dst, r, seed);
+		return SHURCO_isError(e) ? e : r;
+	}
+}
+
+size_t SHURCO_decompress_seed(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity, uint64_t seed);
 
 #ifdef __cplusplus
 }

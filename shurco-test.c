@@ -61,8 +61,12 @@ main(int argc, char *argv[])
 		printf(" inLen=%zu\n", inLen);
 		printf("midLen=%zu\n", atLeast);
 		printf("outLen=%zu\n", eSize);
-		printf(" in=%s\n", argv[1]);
-		printf("out=%s\n", comp);
+		printf("  in=%s\n", argv[1]);
+		printf(" out=%s\n", comp);
+		SHURCO_crypt_url(NULL, comp, eSize, 42);
+		printf("cryp=%s\n", comp);
+		SHURCO_uncrypt_url(NULL, comp, eSize, 42);
+		printf("uncr=%s\n", comp);
 		return 0;
 	}
 
@@ -71,7 +75,7 @@ main(int argc, char *argv[])
 		++inLN;
 		const size_t inLen = strlen((const char*)in);
 		const size_t compAtLeast = SHURCO_COMPRESSBOUND(inLen);
-		const size_t compLen = SHURCO_compress(in, inLen, comp, compAtLeast);
+		const size_t compLen = SHURCO_compress_seed(in, inLen, comp, compAtLeast, 42);
 		assert_with_input(!SHURCO_isError(compLen), in, NULL, "compress fail, error code is %d", SHURCO_getErrorCode(compLen));
 
 		++count[inLen];
@@ -79,15 +83,13 @@ main(int argc, char *argv[])
 		enlarge[inLen] += compLen > inLen;
 		compLenAcc[inLen] += compLen;
 
-		//printf("comp=%s\n", comp);
-
 		size_t detectCompLen = -1;
 		const size_t decompAtLeast = SHURCO_decompressBound(comp, SHURCO_SRC_TERM_AT_NIL, &detectCompLen);
 
 		assert_with_input(compLen == detectCompLen, in, NULL, "detectCompLen (%zu) should be compLen (%zu)", detectCompLen, compLen);
 		assert_with_input(inLen < decompAtLeast || (0 == inLen && 0 == decompAtLeast), in, comp, "decompAtLeast (%zu) is not large enough (%zu)", decompAtLeast, inLen);
 
-		const size_t decompLen = SHURCO_decompress(comp, detectCompLen, decomp, decompAtLeast);
+		const size_t decompLen = SHURCO_decompress_seed(comp, detectCompLen, decomp, decompAtLeast, 42);
 		assert_with_input(!SHURCO_isError(decompLen), in, NULL, "decompress fail, error code is %d", SHURCO_getErrorCode(decompLen));
 		assert_with_input(decompLen < ARRAY_LEN(decomp), in, decomp, "no space for nil");
 		decomp[decompLen] = 0;

@@ -1,6 +1,21 @@
 #include "shurco.h"
 #include <stdint.h> /* int?_t, etc */
-#include <string.h>
+#include <string.h> /* strlen, strncmp, etc */
+#include <stdlib.h> /* malloc */
+
+/* include wyhash commit: 77e50f267fbc7b8e2d09f2d455219adb70ad4749 */
+#ifdef WYHASH_CONDOM
+#  undef WYHASH_CONDOM
+#endif
+#define WYHASH_CONDOM 1
+#ifdef WYHASH_32BIT_MUM
+#  undef WYHASH_32BIT_MUM
+#endif
+#define WYHASH_32BIT_MUM 0
+#ifdef WYTRNG
+#  undef WYTRNG
+#endif
+#include "wyhash.h"
 
 /* Extends URL safe BASE64 to URL query value safe 80 chars:
  * A-Za-z0-9-_ .~!$'()*+,;=:@/?
@@ -100,7 +115,7 @@ SHURCO_decompressBound(const void *SHURCO_RESTRICT const src, const size_t srcSi
 {
 	int8_t headOrd = -1;
 	uint8_t power = 0;
-	const size_t srcStrLen = SHURCO_SRC_TERM_AT_NIL == srcSize ? strlen((const char *)src) : srcSize;
+	const size_t srcStrLen = SHURCO_SRC_TERM_AT_NIL == srcSize && NULL != src ? strlen((const char *)src) : srcSize;
 
 	if (NULL == src || 0 == srcSize) {
 		if (NULL != resultSrcSize) {
@@ -948,4 +963,233 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 	}
 
 	return out - (uint8_t*)dst;
+}
+
+/* return uniform random integer in [0, bound)
+ * ref: JDK java.util.Random.nextLong()
+ */
+static
+uint64_t
+randNextU64(uint64_t *SHURCO_RESTRICT const seed, const uint64_t bound) {
+	const uint64_t m = bound - 1;
+	uint64_t r = wyrand(seed);
+	if ((bound & m) == 0ULL) {
+		r &= m;
+	} else {
+		/* use loop to reject over-represented candidates */
+		for (uint64_t u = r; u - (r = u % bound) + m < u; u = wyrand(seed)) ;
+	}
+	return r;
+}
+
+static
+size_t
+SHURCO_mask(const uint8_t *SHURCO_RESTRICT const src, uint8_t *SHURCO_RESTRICT dst, size_t size, uint64_t seed, const bool add)
+{
+	static uint64_t MASKS[] = { 0, 80, 80*80, 80*80*80+256, 80*256, 80*80*256 };
+	const uint8_t *in = NULL == src ? dst : src;
+	*dst++ = *in++;
+	--size; /* skip first char */
+	while (size > 0) {
+		const uint8_t c = *in++;
+		uint8_t maskLen = 0;
+		uint64_t word = 0;
+
+		/* pattern
+		 * ABC --\
+		 * %HH ----> [0, 80^3 + 256)
+		 * A%HH ---> [0, 80 * 256)
+		 * AB%HH --> [0, 80^2 * 256)
+		 * A ------> [0, 80)]
+		 * AB -----> [0, 80^2)
+		 */
+
+		/* read at most 3 bytes from input */
+		if ('%' == c) {
+			if (size < 3) {
+				return SHURCO_error(invalid_input);
+			} else {
+				/* 2nd, 3rd char */
+				const uint8_t idx2 = HEX_ORD[*in++];
+				const uint8_t idx3 = HEX_ORD[*in++];
+				if (15 < (idx2 | idx3)) {
+					return SHURCO_error(invalid_char);
+				}
+
+				word = ((idx2 << 4) | idx3) & 0xFF;
+				maskLen = 3;
+				size -= 3;
+			}
+
+		} else if ((word = BASE80_ORD[c] & 0xFF) < 80) {
+			int8_t idx;
+
+			/* 1st char */
+			++maskLen;
+			if (0 == --size) {
+				goto mask;
+			}
+
+			/* 2nd char */
+			if ((idx = BASE80_ORD[*in]) < 0) {
+				if ('%' == *in++) {
+					if (size < 3) {
+						return SHURCO_error(invalid_input);
+					} else {
+						/* 2nd, 3rd char */
+						const uint8_t idx2 = HEX_ORD[*in++];
+						const uint8_t idx3 = HEX_ORD[*in++];
+						if (15 < (idx2 | idx3)) {
+							return SHURCO_error(invalid_char);
+						}
+
+						word = ((word << 8) | (idx2 << 4) | idx3) & 0xFFFF;
+						maskLen = 4;
+						size -= 3;
+					}
+					goto mask;
+				} else {
+					return SHURCO_error(invalid_char);
+				}
+			}
+			++in;
+			++maskLen;
+			word = (word * 80 + idx) & 0xFFFF;
+			if (0 == --size) {
+				goto mask;
+			}
+
+			/* 3rd char */
+			if ((idx = BASE80_ORD[*in]) < 0) {
+				if ('%' == *in++) {
+					if (size < 3) {
+						return SHURCO_error(invalid_input);
+					} else {
+						/* 2nd, 3rd char */
+						const uint8_t idx2 = HEX_ORD[*in++];
+						const uint8_t idx3 = HEX_ORD[*in++];
+						if (15 < (idx2 | idx3)) {
+							return SHURCO_error(invalid_char);
+						}
+
+						word = ((word << 8) | (idx2 << 4) | idx3) & 0xFFFFFF;
+						maskLen = 5;
+						size -= 3;
+					}
+					goto mask;
+				} else {
+					return SHURCO_error(invalid_char);
+				}
+			}
+			++in;
+			++maskLen;
+			word = (word * 80 + idx) & 0xFFFFFF;
+			word += 0x100;
+			--size;
+		} else {
+			return SHURCO_error(invalid_char);
+		}
+mask:
+		if (0 == maskLen) {
+			return SHURCO_error(GENERIC);
+		} else {
+			const uint64_t b = MASKS[maskLen];
+			const uint64_t rnd = randNextU64(&seed, b);
+			word += add ? rnd : b - rnd;
+			if (b <= word) {
+				word -= b;
+			}
+			word -= b <= word ? b : 0;
+		}
+
+		/* output */
+		switch (maskLen) {
+		case 1:
+			*dst++ = BASE80_CHR[word];
+			break;
+		case 2:
+			*dst++ = BASE80_CHR[word / 80];
+			*dst++ = BASE80_CHR[word % 80];
+			break;
+		case 3:
+			if (word < 0x100) {
+				*dst++ = '%';
+				*dst++ = HEX_CHAR[word >> 4];
+				*dst++ = HEX_CHAR[word & 0x0F];
+			} else {
+				word -= 0x100;
+				*dst++ = BASE80_CHR[word / (80*80)];
+				*dst++ = BASE80_CHR[word % (80*80) / 80];
+				*dst++ = BASE80_CHR[word % 80];
+			}
+			break;
+		case 4:
+			*dst++ = BASE80_CHR[word >> 8];
+			*dst++ = '%';
+			*dst++ = HEX_CHAR[(word >> 4) & 0x0F];
+			*dst++ = HEX_CHAR[word & 0x0F];
+			break;
+		case 5:
+			*dst++ = BASE80_CHR[(word >> 8) / 80];
+			*dst++ = BASE80_CHR[(word >> 8) % 80];
+			*dst++ = '%';
+			*dst++ = HEX_CHAR[(word >> 4) & 0x0F];
+			*dst++ = HEX_CHAR[word & 0x0F];
+			break;
+		}
+	}
+	return 0;
+}
+
+static inline
+size_t
+SHURCO_mask_inline(const uint8_t *SHURCO_RESTRICT const src, uint8_t *SHURCO_RESTRICT const dst, const size_t size, const uint64_t seed, const bool add)
+{
+	if (NULL == dst) {
+		return SHURCO_error(GENERIC);
+	}
+
+	if (0 == seed || size <= 1) {
+		if (NULL != src) {
+			strncpy((char*)dst, (const char*)src, size);
+		}
+		return 0;
+	} else {
+		return SHURCO_mask(src, dst, size, seed, add);
+	}
+}
+
+size_t
+SHURCO_crypt_url(const void *SHURCO_RESTRICT const src, void *SHURCO_RESTRICT const dst, const size_t size, const uint64_t seed)
+{
+	return SHURCO_mask_inline(src, dst, size, seed, true);
+}
+
+size_t
+SHURCO_uncrypt_url(const void *SHURCO_RESTRICT const src, void *SHURCO_RESTRICT const dst, const size_t size, const uint64_t seed)
+{
+	return SHURCO_mask_inline(src, dst, size, seed, false);
+}
+
+size_t SHURCO_decompress_seed(const void *SHURCO_RESTRICT const src, const size_t srcSize, void *SHURCO_RESTRICT const dst, const size_t dstCapacity, const uint64_t seed)
+{
+	const size_t srcStrLen = SHURCO_SRC_TERM_AT_NIL == srcSize && NULL != src ? strlen((const char *)src) : srcSize;
+	if (NULL == src || srcStrLen <= 1 || 0 == seed) {
+		return SHURCO_decompress(src, srcStrLen, dst, dstCapacity);
+	} else {
+		uint8_t *SHURCO_RESTRICT const copy = malloc(srcStrLen);
+		if (NULL == copy) {
+			return SHURCO_error(GENERIC);
+		} else {
+			const size_t e = SHURCO_uncrypt_url(src, copy, srcStrLen, seed);
+			if (SHURCO_isError(e)) {
+				free(copy);
+				return e;
+			} else {
+				const size_t r = SHURCO_decompress(copy, srcStrLen, dst, dstCapacity);
+				free(copy);
+				return r;
+			}
+		}
+	}
 }
