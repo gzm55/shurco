@@ -145,8 +145,6 @@ typedef struct {
 	uint8_t c;
 } char_with_lvl_t;
 
-// static inline size_t min(const size_t a, const size_t b) { return a < b ? a : b; }
-
 static char_with_lvl_t
 read_one_byte(const uint8_t *SHURCO_RESTRICT const p, const size_t size)
 {
