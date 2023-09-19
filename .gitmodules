@@ -1,0 +1,3 @@
+[submodule "ext/shoco"]
+	path = ext/shoco
+	url = https://github.com/gzm55/shoco.git

@@ -1,9 +1,11 @@
-#include "shurco.h"
 #include <stdint.h> /* int?_t, etc */
 #include <stdlib.h> /* malloc */
 #include <string.h> /* strlen */
 #include <stdio.h>
 #include <time.h> /* nanosleep */
+
+#include "shurco.h"
+#include "ext/shoco/shoco.h"
 
 #ifndef __cplusplus
    /* C version */
@@ -16,6 +18,17 @@
 #  define ARRAY_LEN(X) sizeof(__array_len_aux<sizeof(X)>::match_only_array(X))
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#  define FORCE_INLINE static __inline__ __attribute__((always_inline, unused))
+#elif defined(_MSC_VER)  /* Visual Studio */
+#  define FORCE_INLINE static __forceinline
+#elif defined (__cplusplus) \
+  || (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L))   /* C99 */
+#  define FORCE_INLINE static inline
+#else
+#  define FORCE_INLINE static
+#endif
+
 /** Functions for read time counter, here only support X64 and AArch64
  * Ref:
  * - https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/ia-32-ia-64-benchmark-code-execution-paper.pdf
@@ -24,9 +37,9 @@
  * - https://github.com/google/benchmark/blob/v1.1.0/src/cycleclock.h
  * - https://cseweb.ucsd.edu/classes/wi16/cse221-a/timing.html
  */
-static __inline__
+FORCE_INLINE
 uint64_t
-timer_start_hw()
+timer_start_hw(void)
 {
 #if defined __x86_64__
 	uint32_t cycles_high, cycles_low;
@@ -46,9 +59,9 @@ timer_start_hw()
 #endif
 }
 
-static __inline__
+FORCE_INLINE
 uint64_t
-timer_end_hw()
+timer_end_hw(void)
 {
 #if defined __x86_64__
 	uint32_t cycles_high, cycles_low;
@@ -67,16 +80,16 @@ timer_end_hw()
 static uint64_t TIMER_1024SPAN_COST_CYCLES;
 static uint64_t TIMER_CYCLE_FREQ_HZ;
 
-static __inline__
+FORCE_INLINE
 uint64_t
-timer_start()
+timer_start(void)
 {
 	uint64_t b = timer_start_hw(), b2;
 	while ((b2 = timer_start_hw()) == b);
 	return b2;
 }
 
-static __inline__
+FORCE_INLINE
 uint64_t
 timer_span(const uint64_t b)
 {
@@ -102,12 +115,11 @@ timer_bytes_per_second(uint64_t raw_cycles, const size_t span_count, const size_
 }
 
 static void
-timer_init()
+timer_init(void)
 {
 	uint64_t b, sleepCycles, cost = 0;
 
 	/* initialize TIMER_1024SPAN_COST_CYCLES */
-	uint64_t bb = timer_start();
 	for (int i = 0; i < 1024 / 8; ++i) {
 		b = timer_start();
 		timer_span(b);
@@ -137,6 +149,7 @@ timer_init()
 
 	/* initialize TIMER_CYCLE_FREQ_HZ */
 #if defined(__aarch64__)
+	(void)sleepCycles;
 	__asm__ volatile("mrs \t%0," "CNTFRQ_EL0" : "=r"(TIMER_CYCLE_FREQ_HZ));
 #else
 	b = timer_start();
@@ -175,6 +188,7 @@ typedef struct {
 static size_t
 memcpy_compress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity)
 {
+	(void)dstCapacity;
 	memcpy(dst, src, srcSize);
 	return srcSize;
 }
@@ -191,10 +205,23 @@ SHURCO_SEED_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SH
 	return SHURCO_decompress_seed(src, srcSize, dst, dstCapacity, SEED);
 }
 
+static size_t
+SHOCO_compress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity)
+{
+	return shoco_compress(src, srcSize, dst, dstCapacity);
+}
+
+static size_t
+SHOCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity)
+{
+	return shoco_decompress(src, srcSize, dst, dstCapacity);
+}
+
 const comp_algo_info ALGOS[] = {
 	{ "MEMCPY", memcpy_compress, memcpy_compress },
 	{ "SHURCO", SHURCO_compress, SHURCO_decompress },
 	{ "SHURCO_SEED", SHURCO_SEED_compress, SHURCO_SEED_decompress },
+	{ "SHOCO", SHOCO_compress, SHOCO_decompress },
 };
 
 static
@@ -223,7 +250,6 @@ benchmark(uint8_t *const samples[], const comp_algo_info *const algo, benchmark_
 	for (size_t i = 0; samples[i]; ++i) {
 		const char *const s = (const char*)samples[i];
 		const size_t len = strlen(s);
-		const size_t compAtLeast = MAX_COMP - 1;
 		size_t b_cycle, c_cycles, d_cycles, c_size, d_size;
 
 
@@ -262,10 +288,6 @@ main(const int argc, const char *const argv[])
 	uint8_t *samples[MAX_SAMPLE_CNT + 1];
 	size_t sample_cnt = 0;
 	benchmark_result results[ARRAY_LEN(ALGOS)] = { 0 };
-
-	size_t count[ARRAY_LEN(in) + 1] = { 0 };
-	uint64_t comp_cycles[ARRAY_LEN(in) + 1] = { 0 };
-	uint64_t decomp_cycles[ARRAY_LEN(in) + 1] = { 0 };
 	size_t len, total_b = 0;
 	size_t select_algo_id = ARRAY_LEN(ALGOS);
 
