@@ -312,10 +312,12 @@ main(const int argc, const char *const argv[])
 	}
 
 	printf("Initializing cycle timer ...");
+	fflush(stdout);
 	timer_init();
 	printf(" OK\n");
 
 	printf("Reading benchmark samples ...");
+	fflush(stdout);
 	while (sample_cnt < ARRAY_LEN(samples) - 1 && fgets((char*)in, ARRAY_LEN(in), stdin) != NULL) {
 		in[ARRAY_LEN(in) - 1] = 0;
 		in[strcspn((const char*)in, "\n")] = 0;
@@ -335,6 +337,7 @@ main(const int argc, const char *const argv[])
 
 
 	printf("Benchmarking ...");
+	fflush(stdout);
 	for (size_t i = ARRAY_LEN(ALGOS) <= select_algo_id ? 0 : select_algo_id; i < (ARRAY_LEN(ALGOS) <= select_algo_id ? ARRAY_LEN(ALGOS) : select_algo_id + 1); ++i) {
 		if (!benchmark(samples, ALGOS + i, results + i)) {
 			printf(" ERROR: fail for algo %s\n", ALGOS[i].name);
