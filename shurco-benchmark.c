@@ -6,6 +6,7 @@
 
 #include "shurco.h"
 #include "ext/shoco/shoco.h"
+#include "ext/unishox/unishox2.h"
 
 #ifndef __cplusplus
    /* C version */
@@ -217,11 +218,26 @@ SHOCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_R
 	return shoco_decompress(src, srcSize, dst, dstCapacity);
 }
 
+static size_t
+UNISHOX2_compress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity)
+{
+	(void)dstCapacity;
+	return unishox2_compress_simple(src, srcSize, dst);
+}
+
+static size_t
+UNISHOX2_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity)
+{
+	(void)dstCapacity;
+	return unishox2_decompress_simple(src, srcSize, dst);
+}
+
 const comp_algo_info ALGOS[] = {
 	{ "MEMCPY", memcpy_compress, memcpy_compress },
 	{ "SHURCO", SHURCO_compress, SHURCO_decompress },
 	{ "SHURCO_SEED", SHURCO_SEED_compress, SHURCO_SEED_decompress },
 	{ "SHOCO", SHOCO_compress, SHOCO_decompress },
+	{ "UNISHOX2", UNISHOX2_compress, UNISHOX2_decompress },
 };
 
 static

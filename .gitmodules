@@ -1,3 +1,6 @@
 [submodule "ext/shoco"]
 	path = ext/shoco
 	url = https://github.com/gzm55/shoco.git
+[submodule "ext/unishox"]
+	path = ext/unishox
+	url = https://github.com/siara-cc/Unishox.git
