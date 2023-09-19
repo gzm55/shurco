@@ -2,7 +2,7 @@
 
 set -ex
 
-git submodule update
+git submodule update --init
 
 gcc -Wall -Wextra -Werror -pedantic -O3 -c shurco.c
 gcc -Wall -Wextra -Werror -pedantic -O3 -c ext/shoco/shoco.c -o ./shoco.o
