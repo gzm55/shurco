@@ -16,7 +16,7 @@
 #include <stdbool.h> /* bool */
 #include <stdint.h> /* uint64_t */
 
-#define SHURCO_VER_STRING "0.0.1"
+#define SHURCO_VER_STRING "0.0.2-dev"
 
 typedef enum {
 	SHURCO_error_no_error = 0,
