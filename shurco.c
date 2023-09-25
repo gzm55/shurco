@@ -208,7 +208,7 @@ write_one_byte(const uint8_t c, const uint8_t lvl, uint8_t *SHURCO_RESTRICT cons
 }
 
 static inline
-uint8_t 
+uint8_t
 encode_single_char(const uint8_t c)
 {
 	/* top counted punct */
@@ -221,7 +221,7 @@ encode_single_char(const uint8_t c)
 }
 
 static inline
-uint8_t 
+uint8_t
 decode_single_char(const uint8_t c)
 {
 	/* top counted punct */
