@@ -2,8 +2,7 @@
 
 # Base 80
 
-#ch = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" + ".~!$'()*+,;=:@/?";
-ch = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" + ".=/~!$'()*+,;:@?";
+ch = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" + "./=~!$'()*+,;:@?";
 
 index = [ ch.find(chr(i)) for i in range(256) ]
 index_str = [ "{:2d}".format(idx) for idx in index ]

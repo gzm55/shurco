@@ -24,11 +24,11 @@
 
 static const char BASE80_CHR[80+1] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-	".=/~!$'()*+,;:@?";
+	"./=~!$'()*+,;:@?";
 
 static const int8_t BASE80_ORD[256] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, 68, -1, -1, 69, -1, -1, 70, 71, 72, 73, 74, 75, 62, 64, 66, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 77, 76, -1, 65, -1, 79,
+	-1, 68, -1, -1, 69, -1, -1, 70, 71, 72, 73, 74, 75, 62, 64, 65, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 77, 76, -1, 66, -1, 79,
 	78,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, 63,
 	-1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, 67, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -39,10 +39,10 @@ static const int8_t BASE80_ORD[256] = {
 
 static const char HEX_CHAR[16+1] = "0123456789ABCDEF";
 static const int8_t HEX_ORD[256] = {
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-        -1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
+	-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -57,6 +57,12 @@ typedef enum {
 	MODE_BASE64,
 	MODE_BASE64_RAW,
 } encode_mode_t;
+
+typedef enum {
+	URL_PART_AUTHORITY = 0,
+	URL_PART_PATH = 1,
+	URL_PART_QUERY_AND_FRAGMENT = 2,
+} url_part_t;
 
 #ifdef __has_attribute
 # define HAS_ATTRIBUTE(x) __has_attribute(x)
@@ -98,17 +104,67 @@ typedef enum {
 #  define ARRAY_LEN(X) sizeof(__array_len_aux<sizeof(X)>::match_only_array(X))
 #endif
 
-#if defined(_MSC_VER)
-  #define _ALIGNED __declspec(align(16))
-  #define inline __inline
-#elif defined(__GNUC__)
-  #define _ALIGNED __attribute__ ((aligned(16)))
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)    /* C11 */
+#  define STATIC_ASSERT(c) _Static_assert((c),#c)
+#elif defined(__cplusplus) && (__cplusplus >= 201103L)            /* C++11 */
+#  define STATIC_ASSERT(c) static_assert((c),#c)
 #else
-  #define _ALIGNED
+#  define STATIC_ASSERT(c) extern char _static_assert_aux[(c) ? 1 : -1]
 #endif
 
+#if defined(_MSC_VER)
+#  define _ALIGNED __declspec(align(16))
+#  define inline __inline
+#elif defined(__GNUC__)
+#  define _ALIGNED __attribute__ ((aligned(16)))
+#else
+#  define _ALIGNED
+#endif
+
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable: 4324) /* structure was padded due to __declspec(align()) */
+#endif
+
+#define PACK_COUNT 4
+#define MAX_SUCCESSOR_N 7
+#define MAX_SUCCESSOR_TABLE_LEN 16
+
+typedef struct Pack {
+	const uint32_t word;
+	const unsigned int bytes_packed;
+	const unsigned int bytes_unpacked;
+	const unsigned int offsets[MAX_SUCCESSOR_N + 1];
+	const int16_t _ALIGNED masks[MAX_SUCCESSOR_N + 1];
+} Pack;
+
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
+
+
 #define _SHURCO_INTERNAL
-#include "shurco_model.h"
+#include "shurco_model-authority.h"
+#include "shurco_model-path.h"
+#include "shurco_model-query.h"
+
+typedef struct {
+	const size_t min_chr;
+	const size_t max_chr;
+	const size_t pack_count;
+	const size_t max_successor_n;
+	__typeof__(chrs_by_chr_id__A[0]) *const chrs_by_chr_id;
+	__typeof__(chr_ids_by_chr__A[0]) *const chr_ids_by_chr;
+	__typeof__(successor_ids_by_chr_id_and_chr_id__A[0]) *const successor_ids_by_chr_id_and_chr_id;
+	__typeof__(chrs_by_chr_and_successor_id__A[0]) *const chrs_by_chr_and_successor_id;
+	__typeof__(packs__A[0]) *const packs;
+} Model_t;
+
+static const Model_t models[] = {
+	{ MIN_CHR__A, MAX_CHR__A, PACK_COUNT__A, MAX_SUCCESSOR_N__A, chrs_by_chr_id__A, chr_ids_by_chr__A, successor_ids_by_chr_id_and_chr_id__A, chrs_by_chr_and_successor_id__A, packs__A },
+	{ MIN_CHR__P, MAX_CHR__P, PACK_COUNT__P, MAX_SUCCESSOR_N__P, chrs_by_chr_id__P, chr_ids_by_chr__P, successor_ids_by_chr_id_and_chr_id__P, chrs_by_chr_and_successor_id__P, packs__P },
+	{ MIN_CHR__QF, MAX_CHR__QF, PACK_COUNT__QF, MAX_SUCCESSOR_N__QF, chrs_by_chr_id__QF, chr_ids_by_chr__QF, successor_ids_by_chr_id_and_chr_id__QF, chrs_by_chr_and_successor_id__QF, packs__QF },
+};
 
 size_t
 SHURCO_decompressBound(const void *SHURCO_RESTRICT const src, const size_t srcSize, size_t *SHURCO_RESTRICT const resultSrcSize)
@@ -141,7 +197,7 @@ SHURCO_decompressBound(const void *SHURCO_RESTRICT const src, const size_t srcSi
 }
 
 typedef struct {
-	uint8_t lvl; // 0~3 for percent level, result is 1, 3, 5, 7 for the raw read bytes
+	uint8_t lvl; /* 0~3 for percent level, result is 1, 3, 5, 7 for the raw read bytes */
 	uint8_t c;
 } char_with_lvl_t;
 
@@ -209,28 +265,44 @@ write_one_byte(const uint8_t c, const uint8_t lvl, uint8_t *SHURCO_RESTRICT cons
 
 static inline
 uint8_t
-encode_single_char(const uint8_t c)
+encode_single_char(const uint8_t c, const url_part_t part)
 {
-	/* top counted punct */
-	if ((uint8_t)BASE80_ORD[c] < 67) { /* first 67 chars in BASE80 */
+	/* top counted char */
+	if ((uint8_t)BASE80_ORD[c] < 66) { /* first 66 chars in BASE80 */
 		return c;
-	} else if ('&' == c) {
-		return '~';
 	}
-	return 0;
+
+	/* a: ?->~  #->=
+	 * p: ?->~  =->=
+	 * q: &->~  =->=
+	 */
+	switch (c) {
+	case '?': return URL_PART_QUERY_AND_FRAGMENT != part ? '~' : 0;
+	case '#': return URL_PART_AUTHORITY == part ? '=' : 0;
+	case '=': return URL_PART_AUTHORITY != part ? '=' : 0;
+	case '&': return URL_PART_QUERY_AND_FRAGMENT == part ? '~' : 0;
+	default: return 0;
+	}
 }
 
 static inline
 uint8_t
-decode_single_char(const uint8_t c)
+decode_single_char(const uint8_t c, const url_part_t part)
 {
-	/* top counted punct */
-	if ((uint8_t)BASE80_ORD[c] < 67) { /* first 67 chars in BASE80 */
+	/* top counted char */
+	if ((uint8_t)BASE80_ORD[c] < 66) { /* first 66 chars in BASE80 */
 		return c;
-	} else if ('~' == c) {
-		return '&';
 	}
-	return 0;
+
+	/* a: ~->?  =->#
+	 * p: ~->?  =->=
+	 * q: ~->&  =->=
+	 */
+	switch (c) {
+	case '~': return URL_PART_QUERY_AND_FRAGMENT == part ? '&' : '?';
+	case '=': return URL_PART_AUTHORITY == part ? '#' : '=';
+	default: return 0;
+	}
 }
 
 static size_t
@@ -402,9 +474,9 @@ encode_pct_markers(const uint8_t lvl, const uint8_t len, uint8_t *const out, con
 
 static inline
 bool
-check_indices(const uint8_t *SHURCO_RESTRICT indices, const int pack_n) {
-	for (unsigned int i = 0; i < packs[pack_n].bytes_unpacked; ++i) {
-		if (indices[i] > packs[pack_n].masks[i]) {
+check_indices(const uint8_t *SHURCO_RESTRICT indices, const int pack_n, const Model_t *SHURCO_RESTRICT const m) {
+	for (unsigned int i = 0; i < m->packs[pack_n].bytes_unpacked; ++i) {
+		if (indices[i] > m->packs[pack_n].masks[i]) {
 			return false;
 		}
 	}
@@ -413,29 +485,23 @@ check_indices(const uint8_t *SHURCO_RESTRICT indices, const int pack_n) {
 
 static inline
 int8_t
-find_best_encoding(const uint8_t *SHURCO_RESTRICT indices, const size_t n)
+find_best_encoding(const uint8_t *SHURCO_RESTRICT indices, const size_t n, const Model_t *SHURCO_RESTRICT const m)
 {
-	//for (int p = PACK_COUNT - 1; p >= 0; --p)
-	for (int8_t p = 0; p < PACK_COUNT; ++p)
-		if ((n >= packs[p].bytes_unpacked) && (check_indices(indices, p))) {
+	for (size_t p = 0; p < m->pack_count; ++p)
+		if ((n >= m->packs[p].bytes_unpacked) && (check_indices(indices, p, m))) {
 			return p;
 		}
 	return -1;
 }
 
 size_t
-SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, void *SHURCO_RESTRICT const dst, size_t dstCapacity)
+SHURCO_compress_with_model(const uint8_t *SHURCO_RESTRICT in, size_t inLeft, uint8_t *SHURCO_RESTRICT out, size_t dstCapacity, const url_part_t cur_part)
 {
-	const uint8_t *SHURCO_RESTRICT in = src;
-	const size_t inLen = (SHURCO_SRC_TERM_AT_NIL == srcSize && NULL != in) ? strlen((const char*)in) : srcSize;
-	size_t inLeft = inLen;
-	uint8_t *SHURCO_RESTRICT out = dst;
-	size_t outLen = 0;
-	uint8_t head = 0;
 	size_t i;
 	uint8_t last_pct_lvl = 1; /* no percent encoded */
 	uint8_t last_pct_cnt = 1 << 2;
 	uint8_t *last_pct_header = out;
+	uint8_t *out0 = out;
 	encode_mode_t mode = MODE_RAW;
 
 	uint8_t single_raw = 0;
@@ -486,6 +552,213 @@ SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, voi
 	uint8_t b64_raw = 0;
 	uint8_t _ALIGNED indices[MAX_SUCCESSOR_N + 1] = { 0 };
 
+	while (inLeft > 0) {
+		/* TODO reuse left chars from previous pack matching */
+		const char_with_lvl_t lvl_c = read_one_byte(in, inLeft); /* de-percent */
+		const uint8_t pct_lvl = lvl_c.lvl;
+		const uint8_t c = lvl_c.c;
+		int16_t last_char_index = models[cur_part].chr_ids_by_chr[c];
+		int8_t pack = -1;
+
+		/* process pct */
+		if (pct_lvl == last_pct_lvl) {
+			last_pct_cnt >>= 1;
+		} else {
+			/* finish the previous pct blocks */
+			if (1 != last_pct_lvl && 0 != last_pct_cnt) {
+				/* fix last pct header for length 1, 2, 3 */
+				const uint8_t l = (7 ^ last_pct_cnt) >> 1; /* 100 -> 1, 10 -> 2, 1 -> 3 */
+				FIX_PCT(l);
+			}
+			if (1 != pct_lvl || 0 == last_pct_cnt) {
+				/* short (l<=3) pct encoded chars merge with the following non-pct chars */
+				switch (mode) {
+				case MODE_BASE64:
+					FLUSH_B64(true);
+					break;
+				case MODE_BASE64_RAW:
+					FLUSH_B64(true);
+					APPEND_RAW(encode_single_char(b64_raw, cur_part)); /* encode single again for pending raw */
+					break;
+				default: break;
+				}
+			}
+			if (1 != last_pct_lvl && 0 == last_pct_cnt) {
+				APPEND_PCT_FOOTER();
+			}
+
+			/* open new pct blocks */
+			APPEND_PCT_HEADER(pct_lvl, 0);
+			last_pct_lvl = pct_lvl;
+			last_pct_cnt = 1 << 2;
+		}
+
+		/* process the head char */
+		if (last_char_index < 0) {
+			goto last_resort;
+		}
+
+		size_t forwardLeft = inLeft - pct_lvl;
+		size_t forwardRead = 0;
+		size_t forwardReadAcc[MAX_SUCCESSOR_N + 1];
+		uint8_t forwardPctCnt = last_pct_cnt;
+		uint8_t forwardSwitchPos = 0;
+		forwardReadAcc[0] = 0;
+		indices[0] = (uint8_t)last_char_index;
+		for (i = 1; i <= models[cur_part].max_successor_n && forwardLeft > 0; ++i) {
+			const char_with_lvl_t f_lvl_c = read_one_byte(in + pct_lvl + forwardRead, forwardLeft); /* read forward */
+			const int16_t current_index = models[cur_part].chr_ids_by_chr[f_lvl_c.c];
+			int8_t successor_index;
+			if (current_index < 0) {
+				break;
+			}
+			if (0 == forwardSwitchPos && last_pct_lvl == f_lvl_c.lvl) {
+				forwardPctCnt >>= 1;
+			} else if (0 == forwardSwitchPos && last_pct_lvl != f_lvl_c.lvl) {
+				forwardSwitchPos = i;
+				if (1 != last_pct_lvl && 0 == forwardPctCnt) {
+					break; /* need insert pct footer */
+				}
+				if (!(last_pct_lvl != 1 && forwardPctCnt != 0 && f_lvl_c.lvl == 1)) {
+					break; /* need switch pct block */
+				}
+			} else if (0 != forwardSwitchPos && 1 != f_lvl_c.lvl) {
+				break; /* need switch pct block */
+			}
+
+			successor_index = models[cur_part].successor_ids_by_chr_id_and_chr_id[last_char_index][current_index];
+			if (successor_index < 0) {
+				break;
+			}
+
+			indices[i] = successor_index;
+			last_char_index = current_index;
+			forwardRead += f_lvl_c.lvl;
+			forwardLeft -= f_lvl_c.lvl;
+			forwardReadAcc[i] = forwardReadAcc[i-1] + f_lvl_c.lvl;
+		}
+
+		if (i < 4) {
+			goto last_resort; /* at least 4 consecutive chars for packing */
+		}
+
+		pack = find_best_encoding(indices, i, models + cur_part);
+
+		if (0 <= pack) {
+			if (0 != forwardSwitchPos && forwardSwitchPos < models[cur_part].packs[pack].bytes_unpacked && 1 != last_pct_lvl && 0 != forwardPctCnt) {
+				/* fix last pct header for length 1, 2, 3 */
+				const uint8_t l = (7 ^ forwardPctCnt) >> 1; /* 100 -> 1, 10 -> 2, 1 -> 3 */
+				FIX_PCT(l);
+				last_pct_lvl = 1;
+				last_pct_cnt = 1 << 2;
+			} else {
+				last_pct_cnt >>= models[cur_part].packs[pack].bytes_packed;
+			}
+			switch (mode) {
+			case MODE_BASE64:
+				FLUSH_B64(true);
+				break;
+			case MODE_BASE64_RAW:
+				FLUSH_B64(true);
+				APPEND_RAW(encode_single_char(b64_raw, cur_part)); /* encode single again for pending raw */
+				break;
+			default: break;
+			}
+			mode = MODE_RAW;
+
+			if (models[cur_part].packs[pack].bytes_packed >= dstCapacity) {
+				return SHURCO_error(dstSize_tooSmall);
+			}
+
+			/* write packed bytes */
+			uint32_t word = models[cur_part].packs[pack].word;
+			for (i = 0; i < models[cur_part].packs[pack].bytes_unpacked; ++i) {
+				word |= indices[i] << models[cur_part].packs[pack].offsets[i];
+			}
+			if (0 <= (int32_t)word) {
+				*out++ = '%';
+				*out++ = HEX_CHAR[(word >> 27) & 0x0F];
+				*out++ = HEX_CHAR[(word >> 23) & 0x0F];
+			} else {
+				*out++ = '!';
+				for (i = 1; i < models[cur_part].packs[pack].bytes_packed; ++i) {
+					*out++ = BASE80_CHR[(word >> (32 - 1 - 6 * i)) & 0x3F];
+				}
+			}
+
+			/* move forwarding */
+			dstCapacity -= models[cur_part].packs[pack].bytes_packed;
+			in += forwardReadAcc[models[cur_part].packs[pack].bytes_unpacked-1];
+			inLeft -= forwardReadAcc[models[cur_part].packs[pack].bytes_unpacked-1];
+		} else {
+last_resort:
+			if (0 == (single_raw = encode_single_char(c, cur_part))) {
+				if (MODE_BASE64_RAW == mode) {
+					APPEND_B64(b64_raw);
+				}
+				APPEND_B64(c);
+				mode = MODE_BASE64;
+			} else {
+				switch (mode) {
+					case MODE_BASE64:
+						b64_raw = c;
+						mode = MODE_BASE64_RAW;
+						break;
+					case MODE_BASE64_RAW:
+						FLUSH_B64(true);
+						APPEND_RAW(encode_single_char(b64_raw, cur_part)); /* encode single again for pending raw */
+						FALLTHROUGH; /* fallthrough */
+					case MODE_RAW:
+						APPEND_RAW(single_raw);
+						mode = MODE_RAW;
+						break;
+				}
+			}
+
+		}
+
+		/* move forwarding */
+		in += pct_lvl;
+		inLeft -= pct_lvl;
+
+	}
+
+	if (0 != inLeft) {
+		return SHURCO_error(GENERIC);
+	}
+
+	/* flush pending b64 bytes */
+	switch (mode) {
+	case MODE_BASE64:
+		FLUSH_B64(true);
+		break;
+	case MODE_BASE64_RAW:
+		FLUSH_B64(true);
+		APPEND_RAW(encode_single_char(b64_raw, cur_part)); /* encode single again for pending raw */
+		break;
+	default: break;
+	}
+
+	/* skip pct footer at last */
+
+	return out - out0;
+}
+
+size_t
+SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, void *SHURCO_RESTRICT const dst, size_t dstCapacity)
+{
+	const uint8_t *SHURCO_RESTRICT in = src;
+	const size_t inLen = (SHURCO_SRC_TERM_AT_NIL == srcSize && NULL != in) ? strlen((const char*)in) : srcSize;
+	size_t inLeft = inLen;
+	uint8_t *SHURCO_RESTRICT out = dst;
+	size_t outLen = 0;
+	uint8_t head = 0;
+	size_t i;
+	const uint8_t *in_a;
+	const uint8_t *in_p;
+	const uint8_t *in_q;
+	size_t len_a = 0, len_p = 0, len_q = 0;
+
 	if (NULL == in && srcSize > 0) {
 		return SHURCO_error(GENERIC);
 	}
@@ -516,194 +789,53 @@ SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, voi
 		}
 	}
 
-	while (inLeft > 0) {
-		// TODO reuse left chars from previous pack matching
-		const char_with_lvl_t lvl_c = read_one_byte(in, inLeft); /* de-percent */
-		const uint8_t pct_lvl = lvl_c.lvl;
-		const uint8_t c = lvl_c.c;
-		int16_t last_char_index = chr_ids_by_chr[c];
-		int8_t pack = -1;
-
-		/* process pct */
-		if (pct_lvl == last_pct_lvl) {
-			last_pct_cnt >>= 1;
+	{
+		const uint8_t *const p_s = memchr(in, '#', inLeft);
+		const uint8_t *const p_q = memchr(in, '?', NULL == p_s ? inLeft : p_s - in);
+		in_q = NULL == p_q ? p_s : p_q;
+		if (NULL != in_q) {
+			in_q += 1;
+			len_q = in + inLeft - in_q;
+			in_p = memchr(in, '/', inLeft - len_q - 1);
 		} else {
-			/* finish the previous pct blocks */
-			if (1 != last_pct_lvl && 0 != last_pct_cnt) {
-				/* fix last pct header for length 1, 2, 3 */
-				const uint8_t l = (7 ^ last_pct_cnt) >> 1; /* 100 -> 1, 10 -> 2, 1 -> 3 */
-				FIX_PCT(l);
-			}
-			if (1 != pct_lvl || 0 == last_pct_cnt) {
-				/* short (l<=3) pct encoded chars merge with the following non-pct chars */
-				switch (mode) {
-				case MODE_BASE64:
-					FLUSH_B64(true);
-					break;
-				case MODE_BASE64_RAW:
-					FLUSH_B64(true);
-					APPEND_RAW(encode_single_char(b64_raw)); /* encode single again for pending raw */
-					break;
-				default: break;
-				}
-			}
-			if (1 != last_pct_lvl && 0 == last_pct_cnt) {
-				APPEND_PCT_FOOTER();
-			}
-
-			/* open new pct blocks */
-			APPEND_PCT_HEADER(pct_lvl, 0);
-			last_pct_lvl = pct_lvl;
-			last_pct_cnt = 1 << 2;
+			in_p = memchr(in, '/', inLeft);
 		}
-
-		/* process the head char */
-		if (last_char_index < 0) {
-			goto last_resort;
+		if (NULL != in_p) {
+			in_p += 1;
+			len_p = (in + (inLeft - len_q)) - in_p;
 		}
-
-		size_t forwardLeft = inLeft - pct_lvl;
-		size_t forwardRead = 0;
-		size_t forwardReadAcc[MAX_SUCCESSOR_N + 1];
-		uint8_t forwardPctCnt = last_pct_cnt;
-		uint8_t forwardSwitchPos = 0;
-		forwardReadAcc[0] = 0;
-		indices[0] = (uint8_t)last_char_index;
-		for (i = 1; i <= MAX_SUCCESSOR_N && forwardLeft > 0; ++i) {
-			const char_with_lvl_t f_lvl_c = read_one_byte(in + pct_lvl + forwardRead, forwardLeft); /* read forward */
-			const int16_t current_index = chr_ids_by_chr[f_lvl_c.c];
-			int8_t successor_index;
-			if (current_index < 0) {
-				break;
-			}
-			if (0 == forwardSwitchPos && last_pct_lvl == f_lvl_c.lvl) {
-				forwardPctCnt >>= 1;
-			} else if (0 == forwardSwitchPos && last_pct_lvl != f_lvl_c.lvl) {
-				forwardSwitchPos = i;
-				if (1 != last_pct_lvl && 0 == forwardPctCnt) {
-					break; /* need insert pct footer */
-				}
-				if (!(last_pct_lvl != 1 && forwardPctCnt != 0 && f_lvl_c.lvl == 1)) {
-					break; /* need switch pct block */
-				}
-			} else if (0 != forwardSwitchPos && 1 != f_lvl_c.lvl) {
-				break; /* need switch pct block */
-			}
-
-			successor_index = successor_ids_by_chr_id_and_chr_id[last_char_index][current_index];
-			if (successor_index < 0) {
-				break;
-			}
-
-			indices[i] = successor_index;
-			last_char_index = current_index;
-			forwardRead += f_lvl_c.lvl;
-			forwardLeft -= f_lvl_c.lvl;
-			forwardReadAcc[i] = forwardReadAcc[i-1] + f_lvl_c.lvl;
-		}
-
-		if (i < 4) {
-			goto last_resort; /* at least 4 consecutive chars for packing */
-		}
-
-		pack = find_best_encoding(indices, i);
-
-		if (0 <= pack) {
-			if (0 != forwardSwitchPos && forwardSwitchPos < packs[pack].bytes_unpacked && 1 != last_pct_lvl && 0 != forwardPctCnt) {
-				/* fix last pct header for length 1, 2, 3 */
-				const uint8_t l = (7 ^ forwardPctCnt) >> 1; /* 100 -> 1, 10 -> 2, 1 -> 3 */
-				FIX_PCT(l);
-				last_pct_lvl = 1;
-				last_pct_cnt = 1 << 2;
-			} else {
-				last_pct_cnt >>= packs[pack].bytes_packed;
-			}
-			switch (mode) {
-			case MODE_BASE64:
-				FLUSH_B64(true);
-				break;
-			case MODE_BASE64_RAW:
-				FLUSH_B64(true);
-				APPEND_RAW(encode_single_char(b64_raw)); /* encode single again for pending raw */
-				break;
-			default: break;
-			}
-			mode = MODE_RAW;
-
-			if (packs[pack].bytes_packed >= dstCapacity) {
-				return SHURCO_error(dstSize_tooSmall);
-			}
-
-			/* write packed bytes */
-			uint32_t word = packs[pack].word;
-			for (i = 0; i < packs[pack].bytes_unpacked; ++i) {
-				word |= indices[i] << packs[pack].offsets[i];
-			}
-			if (0 <= (int32_t)word) {
-				*out++ = '%';
-				*out++ = HEX_CHAR[(word >> 27) & 0x0F];
-				*out++ = HEX_CHAR[(word >> 23) & 0x0F];
-			} else {
-				*out++ = '!';
-				for (i = 1; i < packs[pack].bytes_packed; ++i) {
-					*out++ = BASE80_CHR[(word >> (32 - 1 - 6 * i)) & 0x3F];
-				}
-			}
-
-			/* move forwarding */
-			dstCapacity -= packs[pack].bytes_packed;
-			in += forwardReadAcc[packs[pack].bytes_unpacked-1];
-			inLeft -= forwardReadAcc[packs[pack].bytes_unpacked-1];
-		} else {
-last_resort:
-			if (0 == (single_raw = encode_single_char(c))) {
-				if (MODE_BASE64_RAW == mode) {
-					APPEND_B64(b64_raw);
-				}
-				APPEND_B64(c);
-				mode = MODE_BASE64;
-			} else {
-				switch (mode) {
-					case MODE_BASE64:
-						b64_raw = c; //single_raw;
-						mode = MODE_BASE64_RAW;
-						break;
-					case MODE_BASE64_RAW:
-						FLUSH_B64(true);
-						APPEND_RAW(encode_single_char(b64_raw)); /* encode single again for pending raw */
-						FALLTHROUGH; /* fallthrough */
-					case MODE_RAW:
-						APPEND_RAW(single_raw);
-						mode = MODE_RAW;
-						break;
-				}
-			}
-
-		}
-
-		/* move forwarding */
-		in += pct_lvl;
-		inLeft -= pct_lvl;
-
+		in_a = in;
+		len_a = inLeft - len_p - len_q;
 	}
 
-	if (0 != inLeft) {
-		return SHURCO_error(GENERIC);
+	{
+		const size_t r = SHURCO_compress_with_model(in_a, len_a, out, dstCapacity, URL_PART_AUTHORITY);
+		if (SHURCO_isError(r)) {
+			return r;
+		}
+		out += r;
+		dstCapacity -= r;
 	}
 
-	/* flush pending b64 bytes */
-	switch (mode) {
-	case MODE_BASE64:
-		FLUSH_B64(true);
-		break;
-	case MODE_BASE64_RAW:
-		FLUSH_B64(true);
-		APPEND_RAW(encode_single_char(b64_raw)); /* encode single again for pending raw */
-		break;
-	default: break;
+	if (len_p) {
+		const size_t r = SHURCO_compress_with_model(in_p, len_p, out, dstCapacity, URL_PART_PATH);
+		if (SHURCO_isError(r)) {
+			return r;
+		}
+		out += r;
+		dstCapacity -= r;
 	}
 
-	/* skip pct footer at last */
+	if (len_q) {
+		const size_t r = SHURCO_compress_with_model(in_q, len_q, out, dstCapacity, URL_PART_QUERY_AND_FRAGMENT);
+		if (SHURCO_isError(r)) {
+			return r;
+		}
+		out += r;
+		dstCapacity -= r;
+	}
+
+	/* with model */
 
 	/* append nil to output */
 	if (0 == dstCapacity) {
@@ -724,6 +856,22 @@ last_resort:
 	return outLen;
 }
 
+static inline
+url_part_t
+next_part(const uint8_t c, const url_part_t cur_part)
+{
+	if (URL_PART_QUERY_AND_FRAGMENT == cur_part) {
+		return cur_part;
+	}
+
+	switch (c) {
+	case '/' : return URL_PART_AUTHORITY == cur_part ? URL_PART_PATH : cur_part;
+	case '?' : FALLTHROUGH; /* fallthrough */
+	case '#' : return URL_PART_QUERY_AND_FRAGMENT;
+	default: return cur_part;
+	}
+}
+
 size_t
 SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_RESTRICT dst, size_t dstCapacity)
 {
@@ -735,18 +883,20 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 	size_t b64_bytes_cnt;
 	uint8_t pct_lvl = 0; /* 0, 1, 3, 5 */
 	int8_t pct_cnt = 0; /* -1 for dynamic length, 100 for 3, 10 for 2, 1 for 1 */
-	memset(dst, 0, dstCapacity);
+	url_part_t cur_part = URL_PART_AUTHORITY;
+	memset(dst, 0, dstCapacity); // TODO
 #	define WRITE_RAW(c) do { \
 		const size_t r = write_one_byte((c), pct_lvl, out, dstCapacity); \
 		if (SHURCO_isError(r)) { \
 			return r; \
 		} \
+		out += r; \
+		dstCapacity -= r; \
 		if (0 == (pct_cnt >>= 1)) { \
 			pct_lvl = 0; \
 		} \
-		out += r; \
-		dstCapacity -= r; \
 	} while (0)
+#	define UPDATE_PART() cur_part = next_part(*(out - 1), cur_part)
 
 	if (NULL == in && srcSize > 0) {
 		return SHURCO_error(GENERIC);
@@ -786,8 +936,9 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 		uint8_t maybe_b64_chunk = 4;
 		uint32_t word = 0;
 		--inLeft;
-		if (0 != (single = decode_single_char(c))) {
+		if (0 != (single = decode_single_char(c, cur_part))) {
 			WRITE_RAW(single);
+			UPDATE_PART();
 			continue;
 		}
 
@@ -824,35 +975,37 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 				case 2: pack = 1; break;
 				default: /* case 3 */ pack = 0; break;
 				}
-				if (inLeft < packs[pack].bytes_packed - 2) {
+				if (inLeft < models[cur_part].packs[pack].bytes_packed - 2) {
 					return SHURCO_error(invalid_input);
 				}
 				word |= t1 << (32 - 1 - 6);
-				for (size_t i = 2; i < packs[pack].bytes_packed; ++i) {
+				for (size_t i = 2; i < models[cur_part].packs[pack].bytes_packed; ++i) {
 					const int8_t idx = BASE80_ORD[*in++];
 					if (idx < 0 || idx > 63) {
 						return SHURCO_error(invalid_input);
 					}
 					word |= idx << (32 - 1 - 6 * i);
 				}
-				inLeft -= packs[pack].bytes_packed - 2;
+				inLeft -= models[cur_part].packs[pack].bytes_packed - 2;
 			}
 
-			// unpack the leading char
-			offset = packs[pack].offsets[0];
-			mask = packs[pack].masks[0];
-			last_chr = chrs_by_chr_id[(word >> offset) & mask];
+			/* unpack the leading char */
+			offset = models[cur_part].packs[pack].offsets[0];
+			mask = models[cur_part].packs[pack].masks[0];
+			last_chr = models[cur_part].chrs_by_chr_id[(word >> offset) & mask];
 			WRITE_RAW(last_chr);
 
-			for (size_t i = 1; i < packs[pack].bytes_unpacked; ++i) {
-				offset = packs[pack].offsets[i];
-				mask = packs[pack].masks[i];
-				if (last_chr < MIN_CHR || MAX_CHR <= last_chr) {
+			for (size_t i = 1; i < models[cur_part].packs[pack].bytes_unpacked; ++i) {
+				offset = models[cur_part].packs[pack].offsets[i];
+				mask = models[cur_part].packs[pack].masks[i];
+				if (last_chr < models[cur_part].min_chr || models[cur_part].max_chr <= last_chr) {
 					return SHURCO_error(invalid_input);
 				}
-				last_chr = chrs_by_chr_and_successor_id[last_chr - MIN_CHR][(word >> offset) & mask];
+				last_chr = models[cur_part].chrs_by_chr_and_successor_id[last_chr - models[cur_part].min_chr][(word >> offset) & mask];
 				WRITE_RAW(last_chr);
 			}
+
+			UPDATE_PART(); /* '/', '?' or '#' should be the last char of a pack */
 
 			break;
 
@@ -868,6 +1021,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 				return SHURCO_error(invalid_input);
 			}
 			WRITE_RAW((uint8_t)b64_1_byte);
+			UPDATE_PART();
 			--inLeft;
 			break;
 
@@ -900,6 +1054,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 					return SHURCO_error(invalid_input);
 				}
 				WRITE_RAW((uint8_t)b64_1_byte);
+				UPDATE_PART();
 				break;
 			}
 			--inLeft;
@@ -917,6 +1072,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 			for (uint8_t i = 0; i < 3 * maybe_b64_chunk; ++i) {
 				WRITE_RAW(b64_bytes[i]);
 			}
+			UPDATE_PART();
 			in += 4 * maybe_b64_chunk;
 			inLeft -= 4 * maybe_b64_chunk;
 			break;
@@ -938,6 +1094,7 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 				for (uint8_t i = 0; i < b64_bytes_cnt; ++i) {
 					WRITE_RAW(b64_bytes[i]);
 				}
+				UPDATE_PART();
 				in += inRead;
 				inLeft -= inRead;
 			} while (b64_bytes_cnt == 9);
@@ -946,13 +1103,12 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 		case '?': maybe_pct_cnt = -1; FALLTHROUGH; /* fallthrough */
 		case ';': maybe_pct_cnt >>= 1; FALLTHROUGH; /* fallthrough */
 		case ':': maybe_pct_cnt >>= 1; FALLTHROUGH; /* fallthrough */
-		case '@':
-			  if (pct_lvl != 0 && pct_cnt < 0 && maybe_pct_cnt < 0) {
-				  pct_lvl = 0;
-				  pct_cnt = 0;
+		case '@': if (pct_lvl != 0 && pct_cnt < 0 && maybe_pct_cnt < 0) {
+				pct_lvl = 0;
+				pct_cnt = 0;
 			  } else {
-				  pct_lvl = 1; /* 1 for pct level 1 */
-				  pct_cnt = maybe_pct_cnt; /* -1 for dynamic length, 100 for 3, 10 for 2, 1 for 1 */
+				pct_lvl = 1; /* 1 for pct level 1 */
+				pct_cnt = maybe_pct_cnt; /* -1 for dynamic length, 100 for 3, 10 for 2, 1 for 1 */
 			  }
 			  break;
 

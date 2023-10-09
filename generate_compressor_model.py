@@ -23,46 +23,34 @@ anywhere. It is internal to 'shurco.c'. Include 'shurco.h'
 if you want to use shurco in your project.
 */
 
-#define MIN_CHR {min_chr}
-#define MAX_CHR {max_chr}
+#define MIN_CHR__{part} {min_chr}
+#define MAX_CHR__{part} {max_chr}
 
-static const char chrs_by_chr_id[{chrs_count}] = {{
+static const char chrs_by_chr_id__{part}[{chrs_count}] = {{
   {chrs}
 }};
 
-static const int16_t chr_ids_by_chr[256] = {{
+static const int16_t chr_ids_by_chr__{part}[256] = {{
   {chrs_reversed}
 }};
 
-static const int8_t successor_ids_by_chr_id_and_chr_id[{chrs_count}][{chrs_count}] = {{
+static const int8_t successor_ids_by_chr_id_and_chr_id__{part}[{chrs_count}][256] = {{
   {{{successors_reversed}}}
 }};
 
-static const uint8_t chrs_by_chr_and_successor_id[MAX_CHR - MIN_CHR][{successors_count}] = {{
+static const uint8_t chrs_by_chr_and_successor_id__{part}[MAX_CHR__{part} - MIN_CHR__{part}][MAX_SUCCESSOR_TABLE_LEN] = {{
   {{{chrs_by_chr_and_successor_id}}}
 }};
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4324)    // structure was padded due to __declspec(align())
-#endif
+#define PACK_COUNT__{part} {pack_count}
+#define MAX_SUCCESSOR_N__{part} {max_successor_len}
 
-typedef struct Pack {{
-  const uint32_t word;
-  const unsigned int bytes_packed;
-  const unsigned int bytes_unpacked;
-  const unsigned int offsets[{max_elements_len}];
-  const int16_t _ALIGNED masks[{max_elements_len}];
-}} Pack;
+STATIC_ASSERT({chrs_count} <= 256);
+STATIC_ASSERT({successors_count} <= MAX_SUCCESSOR_TABLE_LEN);
+STATIC_ASSERT(PACK_COUNT__{part} <= PACK_COUNT);
+STATIC_ASSERT(MAX_SUCCESSOR_N__{part} <= MAX_SUCCESSOR_N);
 
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
-#define PACK_COUNT {pack_count}
-#define MAX_SUCCESSOR_N {max_successor_len}
-
-static const Pack packs[PACK_COUNT] = {{
+static const Pack packs__{part}[PACK_COUNT] = {{
   {pack_lines}
 }};
 """
@@ -152,10 +140,13 @@ class Encoding(object):
         # put header to the highest bits of a 32-bit word
         return self.raw_header_code << self.offsets.header
 
+    @property
+    def max_succ(self):
+        return self.bits.successors[0]
+
     def __hash__(self):
         return self._hash
 
-    #if encoding.can_encode(chunk[i:], successors, chrs_indices):
     def can_encode(self, part, successors, chrs_indices):
         if len(part) < len(self.bits.consecutive):
             return False
@@ -163,7 +154,7 @@ class Encoding(object):
         if lead_index < 0:
             return False # cannot find index for the lead char
         if lead_index > self.masks.lead: # out of range for the lead char
-            return False # 
+            return False
         last_index = lead_index
         last_char = part[0]
         for masks, char in zip(self.masks.successors, part[1:]):
@@ -225,27 +216,45 @@ def format_int_line(items):
 
 
 def escape(char):
-    #return r"'\''" if char == "'" else repr(char)
     first = char.encode('iso-8859-1')[0]
     if char == "'":
         return r"'\''"
     elif first >= 128:
         return "'\\x{:0>2X}'".format(first)
+    elif first == 0:
+        return '0'
     else:
         return repr(char)
 
 
 def format_chr_line(items):
-    return r", ".join([r"{}".format(escape(k)) for k in items])
+    return re.sub(r"(, 0)+$", "", r", ".join([r"{}".format(escape(k)) for k in items]))
 
-def chunkinator():
-    def read_line_bytes():
-        for line in sys.stdin:
-            line = re.split("[" + WHITESPACE + "]", line)[0] # remove first white space and the right part
-            line = re.sub("^(https?|app)://", "", line, 1) # remove known schemes
-            line = line.encode('utf-8') # encode as utf8
-            if len(line) > 1:
-                yield line
+def component_name(component):
+    return ["A", "P", "QF"][component - 1]
+
+def read_line_bytes(component):
+    for line in sys.stdin:
+        line = re.split("[" + WHITESPACE + "]", line)[0] # remove first white space and the right part
+        line = re.sub("^(https?|app)://", "", line, 1) # remove known schemes
+        if component == 1:
+            # keep authority part
+            line = re.sub(r"^([^/?#]*[/?#]).*", r"\1", line)
+        elif component == 2:
+            line = re.sub(r"^[^/?#]*", r"", line) # remove authroity part
+            if len(line) == 0 or line[0] != "/":
+                continue # no path part
+            line = re.sub(r"^([^?#]*[?#]).*$", r"\1", line[1:]) # keep path part
+        else:
+            qf = re.sub(r"^[^?#]*[?#]", "", line) # keep query and fragment part
+            if qf == line:
+                continue # neigher query nor fragment part
+            line = qf
+        line = line.encode('utf-8') # encode as utf8
+        if len(line) > 1:
+            yield line
+
+def chunkinator(component):
     def get_one_bypte(bline):
         if bline[0] != b'%'[0]:
             return bline[0], 0
@@ -260,11 +269,7 @@ def chunkinator():
             return urllib.parse.unquote_to_bytes(bline[0:3])[0], 1
         return bline[0], 0
 
-    min_chunk_size = 4
-
-    for line in read_line_bytes():
-        if len(line) < min_chunk_size:
-            continue
+    for line in read_line_bytes(component):
         chunk = []
         last_pct_depth = 0
         i = 0
@@ -275,14 +280,15 @@ def chunkinator():
             # split chunk when pct level changed
             # pct encode for (D1, D2, D3)  X (L1, L2, L3, PQ)
             # less than 4 pct chars will be merged with the following non-pct chars
-            if pct_depth != last_pct_depth and (pct_depth != 0 or len(chunk) > 3):
-                len(chunk) >= min_chunk_size and (yield bytes(chunk))
+            if len(chunk) > 0 and pct_depth != last_pct_depth and (pct_depth != 0 or len(chunk) > 3):
+                yield bytes(chunk)
                 chunk = []
 
             chunk.append(b)
             last_pct_depth = pct_depth
 
-        len(chunk) >= min_chunk_size and (yield bytes(chunk))
+        if len(chunk) > 0:
+            yield bytes(chunk)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate a succession table for 'shurco', the utf-8 input url samples are read from STDIN.")
@@ -290,18 +296,35 @@ def main():
 
     generation_group = parser.add_argument_group("table and encoding generation arguments", "Higher values may provide for better compression ratios, but will make compression/decompression slower. Likewise, lower numbers make compression/decompression faster, but will likely make hurt the compression ratio. The default values are mostly a good compromise.")
     generation_group.add_argument("--max-leading-char-bits", type=int, default=6, help="The maximum amount of bits that may be used for representing a leading character. Default: 6")
-    generation_group.add_argument("--max-successor-bits", type=int, default=3, help="The maximum amount of bits that may be used for representing a successor character. Default: 3")
+    generation_group.add_argument("--max-successor-bits", type=int, default=4, help="The maximum amount of bits that may be used for representing a successor character. Default: 4")
     generation_group.add_argument("--encoding-types", type=int, default=4, choices=[1, 2, 3, 4], help="The number of different encoding schemes. If your input strings are very short, consider lower values. Default: 4")
     generation_group.add_argument("--optimize-encoding", action="store_true", default=False, help="Find the optimal packing structure for the training data. This rarely leads to different results than the default values, and it is *slow*. Use it for very unusual input strings, or when you use non-default table generation arguments.")
+    generation_group.add_argument("--sample-chunks", type=int, default=1000, help="The number of sampling chunks for optimizing encoding. Default: 1000")
+    generation_group.add_argument("--component", type=int, default=1, help="use the component of a url, default is 1. 0:scheme, 1:authority, 2:path, 3:query-and-fragment")
+    generation_group.add_argument("--free-ratio", action="store_true", default=False, help="when optimizing encodings, whether the compression ratio must be lower than the previous ones")
+    generation_group.add_argument("--print-stat", action="store_true", default=False, help="only print some statistics")
     args = parser.parse_args()
+
+    # for scheme, dump the schemes from the input in reverse order
+    if args.print_stat and args.component == 0:
+        scheme_counters = collections.Counter()
+        for line in sys.stdin:
+            line = re.split("[" + WHITESPACE + "]", line)[0] # remove first white space and the right part
+            if ":" not in line:
+                continue
+            scheme = re.sub(r"^([^:]*:/*).*", r"\1", line)
+            scheme_counters[scheme] += 1
+        for s in scheme_counters.most_common():
+            print(s[0])
+        return
 
     #%       X  X        :  8 bits, header bit = 1
     #PACK 0  p1 p2       : 11 bits, header bit = 2
     #PACK 10 p1 p2 p3    : 16 bits, header bit = 3
     #PACK 11 p1 p2 p3 p4 : 22 bits, header bit = 3
     PACK_STRUCTURES = (
-        (4, tuple((3,) + t for t in enumlate_structures(16, args.max_leading_char_bits, args.max_successor_bits, 6, 7))),
-        (5, tuple((3,) + t for t in enumlate_structures(22, args.max_leading_char_bits, args.max_successor_bits, 8, 9))),
+        (4, tuple((3,) + t for t in enumlate_structures(16, args.max_leading_char_bits, args.max_successor_bits, 6, 8))),
+        (5, tuple((3,) + t for t in enumlate_structures(22, args.max_leading_char_bits, args.max_successor_bits, 8, 10))),
     )
 
     ENCODINGS = [(packed, [Encoding(bitlist) for bitlist in bitlists]) for packed, bitlists in PACK_STRUCTURES]
@@ -320,8 +343,14 @@ def main():
     sys.stdout.flush()
     bigram_counters = collections.OrderedDict()
     first_char_counter = collections.Counter()
+    char_counter = collections.Counter()
     chunks = []
-    for chunk in chunkinator():
+    MIN_CHUNK_SIZE = 4
+    for chunk in chunkinator(args.component):
+        for c in chunk:
+            char_counter[c] += 1
+        if len(chunk) < MIN_CHUNK_SIZE:
+            continue
         if args.optimize_encoding:
             chunks.append(chunk)
         chunk = chunk.decode('iso-8859-1')
@@ -333,6 +362,22 @@ def main():
                 bigram_counters[a] = collections.Counter()
             bigram_counters[a][b] += 1
 
+    if args.print_stat:
+        first_68_chars_rev = "~=/." + "-_" + "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        print("char count={}".format(len(char_counter)))
+        chars_need_map = []
+        for c, freq in char_counter.most_common(68):
+            if chr(c) in first_68_chars_rev:
+                first_68_chars_rev = re.sub("[" + chr(c) + "]", "", first_68_chars_rev)
+            else:
+                chars_need_map.append(c)
+        print("uncommon printable chars: {}".format(first_68_chars_rev))
+        if len(chars_need_map) > 0:
+            print("need mapping chars: {}".format([chr(c) for c in chars_need_map]))
+            for c, d in zip(chars_need_map, first_68_chars_rev):
+                print((chr(c) if c > 31 and c < 128 else "\\x{:0>2X}".format(c)) + "->" + d)
+        print("all char count: {}".format(["{}:{}".format(chr(c) if c > 31 and c < 128 else "\\x{:0>2X}".format(c), freq) for c, freq in char_counter.most_common()]))
+        return
 
     log("done.")
     # generate list of most common chars
@@ -359,9 +404,8 @@ def main():
     chrs_by_chr_and_successor_id = [successors.get(chr(i), zeros_line) for i in range(min_chr, max_chr)]
     # (lead char, succ-index) -> succ-char
 
-
     if args.optimize_encoding:
-        optmize_chunks_count = 500
+        optmize_chunks_count = args.sample_chunks
         counters = {}
 
         if len(chunks) > optmize_chunks_count:
@@ -399,9 +443,12 @@ def main():
         del chunks
 
         best_encodings_raw = []
+        pratio = 0.0
         for packed, encodings in encodings_for_opt:
             for encoding in encodings:
                 if (encoding.bits.lead > args.max_leading_char_bits) or (max(encoding.bits.successors) > args.max_successor_bits):
+                    continue
+                if not args.free_ratio and encoding.packed < encoding.unpacked * pratio:
                     continue
                 if any([best.cover(encoding) for _, best in best_encodings_raw]):
                     continue # skip a covered encoding
@@ -415,7 +462,9 @@ def main():
                         counters[packed][encoding] += float(unencode_size - encoding.packed)
                 counters[packed][encoding] /= float(all_unencode_size)
 
-            best_encodings_raw.append( (packed, counters[packed].most_common(1)[0][0]) )
+            last_best_encode = counters[packed].most_common(1)[0][0]
+            best_encodings_raw.append( (packed, last_best_encode) )
+            pratio = last_best_encode.packed * 1.0 / last_best_encode.unpacked
             new_all_tested_chunks = []
             for c, ue_size in all_tested_chunks:
                 if not best_encodings_raw[-1][1].can_encode(c, successors, chrs_indices):
@@ -427,10 +476,14 @@ def main():
         for e11 in ENCODINGS_B11:
             if (e11.bits.lead > args.max_leading_char_bits) or (max(e11.bits.successors) > args.max_successor_bits):
                 continue
+            if not args.free_ratio and e11.packed < e11.unpacked * pratio:
+                continue
             if any([best.cover(e11) for _, best in best_encodings_raw]):
                 continue # skip a covered encoding
             for e8 in ENCODINGS_B8:
                 if (e8.bits.lead > args.max_leading_char_bits) or (max(e8.bits.successors) > args.max_successor_bits):
+                    continue
+                if not args.free_ratio and e8.unpacked > e11.unpacked:
                     continue
                 if any([best.cover(e11) for _, best in best_encodings_raw]):
                     continue # skip a covered encoding
@@ -454,6 +507,8 @@ def main():
                     elif e_short is not None and e_short.can_encode(chunk, successors, chrs_indices):
                         counters_b3[(e11,e8)] += float(sum(ue_size[:e_short.unpacked]) - e_short.packed)
                 counters_b3[(e11,e8)] /= float(all_unencode_size)
+        if len(counters_b3) == 0:
+            raise RuntimeError("no suitalbe encodings")
         best_e11, best_e8 = counters_b3.most_common(1)[0][0]
         best_encodings_raw.append( (3, best_e11) )
         best_encodings_raw.append( (2, best_e8) )
@@ -463,10 +518,22 @@ def main():
         log("done.")
     else:
         max_encoding_len = 8
-        best_encodings = [Encoding([3, 5, 3, 3, 3, 2, 2, 2, 2]),
-                          Encoding([3, 6, 2, 2, 2, 2, 2, 0, 0]),
-                          Encoding([2, 5, 2, 2, 2, 0, 0, 0, 0]),
-                          Encoding([1, 3, 3, 1, 1, 0, 0, 0, 0])][-args.encoding_types:]
+        if args.component == 1:
+            best_encodings = [Encoding([3, 5, 3, 3, 3, 2, 2, 2, 2]),
+                              Encoding([3, 5, 4, 3, 2, 1, 1, 0, 0]),
+                              Encoding([2, 5, 2, 2, 2, 0, 0, 0, 0]),
+                              Encoding([1, 1, 3, 2, 2, 0, 0, 0, 0])][-args.encoding_types:]
+        elif args.component == 2:
+            best_encodings = [Encoding([3, 5, 4, 3, 2, 2, 2, 2, 2]),
+                              Encoding([3, 6, 3, 2, 2, 2, 1, 0, 0]),
+                              Encoding([2, 5, 2, 2, 2, 0, 0, 0, 0]),
+                              Encoding([1, 3, 3, 1, 1, 0, 0, 0, 0])][-args.encoding_types:]
+        else:
+            best_encodings = [Encoding([3, 5, 3, 3, 3, 2, 2, 2, 2]),
+                              Encoding([3, 5, 3, 2, 2, 2, 2, 0, 0]),
+                              Encoding([2, 4, 3, 2, 2, 0, 0, 0, 0]),
+                              Encoding([1, 2, 4, 1, 1, 0, 0, 0, 0])][-args.encoding_types:]
+
 
     log("formating table file ... ", end="")
     sys.stdout.flush()
@@ -481,13 +548,15 @@ def main():
         )
         for i in range(args.encoding_types)
     )
+    real_successors_count = 1 << max([ e.max_succ for e in best_encodings])
     out = TABLE_C.format(
+        part=component_name(args.component),
         chrs_count=chars_count,
-        successors_count=successors_count,
+        successors_count=real_successors_count,
         chrs=format_chr_line(successors.keys()),
         chrs_reversed=format_int_line(chrs_reversed),
         successors_reversed="},\n  {".join(format_int_line(l) for l in successors_reversed.values()),
-        chrs_by_chr_and_successor_id="},\n  {".join(format_chr_line(l) for l in chrs_by_chr_and_successor_id),
+        chrs_by_chr_and_successor_id="},\n  {".join(format_chr_line(l[:real_successors_count]) for l in chrs_by_chr_and_successor_id),
 
         pack_lines=pack_lines_formated,
         max_successor_len=max_encoding_len - 1,
@@ -508,4 +577,6 @@ def main():
             log("done.")
 
 if __name__ == "__main__":
+    #for c in chunkinator(1):
+    #    print(c)
     main()
