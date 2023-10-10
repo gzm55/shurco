@@ -791,7 +791,7 @@ SHURCO_compress(const void *SHURCO_RESTRICT const src, const size_t srcSize, voi
 
 	{
 		const uint8_t *const p_s = memchr(in, '#', inLeft);
-		const uint8_t *const p_q = memchr(in, '?', NULL == p_s ? inLeft : p_s - in);
+		const uint8_t *const p_q = memchr(in, '?', NULL == p_s ? inLeft : (size_t)(p_s - in));
 		in_q = NULL == p_q ? p_s : p_q;
 		if (NULL != in_q) {
 			in_q += 1;
@@ -884,7 +884,6 @@ SHURCO_decompress(const void *SHURCO_RESTRICT src, size_t srcSize, void *SHURCO_
 	uint8_t pct_lvl = 0; /* 0, 1, 3, 5 */
 	int8_t pct_cnt = 0; /* -1 for dynamic length, 100 for 3, 10 for 2, 1 for 1 */
 	url_part_t cur_part = URL_PART_AUTHORITY;
-	memset(dst, 0, dstCapacity); // TODO
 #	define WRITE_RAW(c) do { \
 		const size_t r = write_one_byte((c), pct_lvl, out, dstCapacity); \
 		if (SHURCO_isError(r)) { \
